@@ -1,0 +1,8 @@
+Notes about the process of converting C to machine code for python:
+ - Incase future me has forgotten how to use it:
+    - Write a file that has one (1) C function in it.  No includes.
+    - Run ./ctohex.sh file.c to get the bytes string that is the function's machine code.
+    - Look at the file cfunc_caller.py for more details, but basically you just use `cfunc_caller.generate_function(machinecode, rettype, <function arguments>)`
+ - It seems to work best when there is only one C function.  Even if the other one is inlined, it seems that the compiler gets confused when it has to call other functions.
+ - Don't declare arrays or any static data within the C function.  Strings, arrays, constants, etc. are not allowed becuase they create pointers that are missing at runtime.
+ - FOR THE LOVE OF GOD, BOUNDS CHECKING.

@@ -1,0 +1,5 @@
+students/
+students_old/
+othello_tourney/
+*.pyc
+.idea/
