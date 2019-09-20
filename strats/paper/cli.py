@@ -7,11 +7,11 @@ import sys
 import importlib
 from multiprocessing import Process
 
-from Othello_Core import *
-from ai import get_move, random
-from helpers import *
-from heuristics import count_colors
-from helpers import to_tournament_format, to_tournament_move, from_tournament_move
+from .Othello_Core import *
+from .ai import get_move, random
+from .helpers import *
+from .heuristics import count_colors
+from .helpers import to_tournament_format, to_tournament_move, from_tournament_move
 
 TIMEOUT = 1
 
@@ -116,8 +116,8 @@ p1 = run_their_strategy
 p2 = run_their_strategy2
 # p2 = run_random_strategy
 
-their_strat = "strats.test" if len(sys.argv) <= 1 else sys.argv[1]
-their_strat2 = "strats.goodmemory" if len(sys.argv) <= 2 else sys.argv[2]
+their_strat = "ai" if len(sys.argv) <= 1 else sys.argv[1]
+their_strat2 = "goodmemory" if len(sys.argv) <= 2 else sys.argv[2]
 
 if __name__ == '__main__':
     main()

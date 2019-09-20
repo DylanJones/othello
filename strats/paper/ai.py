@@ -2,9 +2,9 @@
 """
 This module contains the various decision making functions.
 """
-from helpers import *
-from heuristics import score
-import machine_code
+from .helpers import *
+from .heuristics import score
+from . import machine_code
 from random import choice, shuffle
 import time
 
@@ -126,7 +126,7 @@ def minimax_helper2(board, color, last_color, depth):
 # 7 - depth that we searched down from this node
 
 
-def alphabeta(node: Node, color, alpha: int, beta: int, depth: int):
+def delta_epsilon(node: Node, color, delta: int, epsilon: int, depth: int):
     global nNode
     if node.moving_plr is None or depth == 0:
         nNode += 1
@@ -141,17 +141,17 @@ def alphabeta(node: Node, color, alpha: int, beta: int, depth: int):
         # print_board(board)
         # print(f"{node.moving_plr} makes a move")
         # print_board(board2)
-        mmx = alphabeta(node2, color, delta, epsilon, depth - 1)[0]
+        mmx = delta_epsilon(node2, color, delta, epsilon, depth - 1)[0]
         # print(f"depth:{depth} delta: {delta} epsilon: {epsilon} mmx: {mmx}")
         # print_board(board2)
         if node.moving_plr == color:
             bestmv = bestmv if best > mmx else move
             best = max(best, mmx)
-            alpha = max(best, alpha)
+            delta = max(best, delta)
         else:
             best = min(best, mmx)
-            beta = min(best, beta)
-        if beta <= alpha:  # alpha-beta cutoff
+            epsilon = min(best, epsilon)
+        if epsilon <= delta:  # alpha-beta cutoff
             break
     return best, bestmv
 
@@ -212,14 +212,14 @@ def negamax_ab(board, color, alpha, beta, moving_plr, depth):
 
 def get_move(board, player, best_move, still_running):
     global nNode
-    from ai_old import alphabeta as old_ab
+    from .ai_old import alphabeta as old_ab
     """Get the best move for specified player"""
     i = 1
     while still_running.value and i < 20:  # too much
         s = time.time()
         nNode = 0
         # mv = old_ab(board, player, i)
-        # mv = alphabeta(board, player, NEGATIVE_INF, POSITIVE_INF, player, i)[1]
+        # mv = delta_epsilon(board, player, NEGATIVE_INF, POSITIVE_INF, player, i)[1]
         node = Node(board, cinv(player))
         mv = delta_epsilon(node, player, NEGATIVE_INF, POSITIVE_INF, i)[1]
         # mv = alphabeta_memory(board, player, NEGATIVE_INF, POSITIVE_INF, player, i)[1]
@@ -236,7 +236,7 @@ def get_move(board, player, best_move, still_running):
 
 nNode = 0
 if __name__ == '__main__':
-    from ai_old import alphabeta as old_ab
+    from .ai_old import alphabeta as old_ab
 
     board = from_tournament_format(
         "???????????@@@@@...??.oo@@...??ooo@@@..??oo@o@@..??.oo@o@..??oo@@@@@.??...@@oo.??...@ooo.???????????")

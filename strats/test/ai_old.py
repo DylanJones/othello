@@ -2,11 +2,13 @@
 """
 This module contains the various decision making functions.
 """
-from helpers import *
-from heuristics import score
-import machine_code
+from .helpers import *
+from .heuristics import score
 from random import choice, shuffle
 import time
+
+NEGATIVE_INF = -(2 ** 80)
+POSITIVE_INF = 2 ** 80
 
 
 def random(board, color):
@@ -65,9 +67,6 @@ def lookahead_helper(board, color, depth, nextmv):
 
 
 def minimax(board, color, n):
-    """
-    Simple minimax implementation.  Doesn't use any kind of pruning or speedups.
-    """
     best_min = NEGATIVE_INF
     best_move = None
     for move in legal_moves(board, color):
@@ -126,143 +125,87 @@ def minimax_helper2(board, color, last_color, depth):
 # 7 - depth that we searched down from this node
 
 
-def alphabeta(node: Node, color, alpha: int, beta: int, depth: int):
-    global nNode
-    if node.moving_plr is None or depth == 0:
-        nNode += 1
-        return score(node), None
-    best = NEGATIVE_INF if node.moving_plr == color else POSITIVE_INF
-    bestmv = None
-    for move in node.legal_moves:
-        board2 = copy_board(node.board)
-        make_move(board2, node.moving_plr, move)
-        node2 = Node(board2, node.moving_plr)
-        # print(f"depth:{depth}, Original board:")
-        # print_board(board)
-        # print(f"{node.moving_plr} makes a move")
-        # print_board(board2)
-        mmx = alphabeta(node2, color, delta, epsilon, depth - 1)[0]
-        # print(f"depth:{depth} delta: {delta} epsilon: {epsilon} mmx: {mmx}")
-        # print_board(board2)
-        if node.moving_plr == color:
-            bestmv = bestmv if best > mmx else move
-            best = max(best, mmx)
-            alpha = max(best, alpha)
-        else:
-            best = min(best, mmx)
-            beta = min(best, beta)
-        if beta <= alpha:  # alpha-beta cutoff
-            break
-    return best, bestmv
+def alphabeta(board, color, n):
+    best_min = NEGATIVE_INF
+    best_move = None
+    for move in legal_moves(board, color):
+        board2 = copy_board(board)
+        make_move(board2, color, move)
+        #mmx = alphabeta_helper_memory(board2, color, NEGATIVE_INF, POSITIVE_INF, color, n)
+        mmx = alphabeta_helper(board2, color, NEGATIVE_INF, POSITIVE_INF, color, n)
+        if mmx > best_min:
+            best_move = move
+            best_min = mmx
+    # print(f'Overall best: {best_move} with score {best_min}')
+    return best_move
 
-
-def alphabeta_memory(board, color, alpha, beta, moving_plr, depth):
-    # print_board(board)
-    global nNode
+def alphabeta_helper(board, color, alpha, beta, last_color, depth):
+    moving_plr = next_player(board, last_color)
     if moving_plr is None or depth == 0:
-        nNode += 1
-        return score(board, color), None
+        return score(board, color)
+    best = NEGATIVE_INF if moving_plr == color else POSITIVE_INF
     moves = legal_moves(board, moving_plr)
-    nodes = []
     for move in moves:
         board2 = copy_board(board)
         make_move(board2, moving_plr, move)
-        cval = transposition_lookup(board2, moving_plr)
-        if cval is not None:
-            nodes.append((cval[0], cval[1], move, board2))
-        else:
-            nodes.append((NEGATIVE_INF, NEGATIVE_INF, move, board2))
-    nodes.sort(key=lambda x: x[1], reverse=True)
-    best = NEGATIVE_INF if moving_plr == color else POSITIVE_INF
-    bestmv = None
-    for node in nodes:
-        if node[0] < depth:
-            mmx = alphabeta_memory(node[3], color, alpha, beta, next_player(node[3], moving_plr), depth - 1)[0]
-            transposition_add(node[3], moving_plr, depth, mmx)
-        else:
-            # print('Hit')
-            mmx = node[1]
+        mmx = alphabeta_helper(board2, color, alpha, beta, moving_plr, depth - 1)
         if moving_plr == color:
-            bestmv = bestmv if best > mmx else node[2]
             best = max(best, mmx)
             alpha = max(best, alpha)
         else:
             best = min(best, mmx)
             beta = min(best, beta)
         if beta <= alpha:  # alpha-beta cutoff
-            # print("alpha beta cutoff")
             break
-    print(f'Depth: {depth}, heuristic: {score(board, color)}, minimax value: {best}')
-    return best, bestmv
+    return best
 
-
-def negamax_ab(board, color, alpha, beta, moving_plr, depth):
-    init_alpha = alpha
-    ttval = negatrans_lookup(board, moving_plr)
-    if ttval is not None and ttval[0] >= depth:
-        if ttval[2] == FLAG_EXACT:
-            return ttval[1]
-        elif ttval[2] == FLAG_LOWER:
-            alpha = max(alpha, ttval[1])
-        elif ttval[2] == FLAG_UPPER:
-            beta = min(beta, ttval[1])
-    if depth == 0 or moving_plr is None:
-        return score(board, color) * (1 if color == BLACK else -1)
+def alphabeta_helper_memory(board, color, alpha, beta, last_color, depth):
+    moving_plr = next_player(board, last_color)
+    if moving_plr is None or depth == 0:
+        return score(board, color)
+    best = NEGATIVE_INF if moving_plr == color else POSITIVE_INF
+    moves = legal_moves(board, moving_plr)
+    nmv = []
+    for move in moves:
+        cval = transposition_lookup(board, moving_plr)
+        if cval is not None:
+            nmv.append((cval[0], cval[1], move))
+        else:
+            nmv.append((-1, -1, move))
+    nmv.sort(key=lambda x: x[1], reverse=False)
+    for node in nmv:
+        if node[0] < depth:
+            # print("mss", node[0], node[1])
+            board2 = copy_board(board)
+            make_move(board2, moving_plr, node[2])
+            mmx = alphabeta_helper_memory(board2, color, alpha, beta, moving_plr, depth - 1)
+        else:
+            print("hit", node[0], node[1])
+            mmx = node[1]
+        if moving_plr == color:
+            best = max(best, mmx)
+            alpha = max(best, alpha)
+        else:
+            best = min(best, mmx)
+            beta = min(best, beta)
+        if node[0] < depth:
+            # add this to transpose
+            transposition_add(board, moving_plr, depth-1, mmx)
+        if beta <= alpha:  # alpha-beta cutoff
+            break
+    return best
 
 
 def get_move(board, player, best_move, still_running):
-    global nNode
-    from ai_old import alphabeta as old_ab
     """Get the best move for specified player"""
     i = 1
     while still_running.value and i < 20:  # too much
         s = time.time()
-        nNode = 0
-        # mv = old_ab(board, player, i)
-        # mv = alphabeta(board, player, NEGATIVE_INF, POSITIVE_INF, player, i)[1]
-        node = Node(board, cinv(player))
-        mv = delta_epsilon(node, player, NEGATIVE_INF, POSITIVE_INF, i)[1]
-        # mv = alphabeta_memory(board, player, NEGATIVE_INF, POSITIVE_INF, player, i)[1]
-        best_move.value = 12345
-        print(f"nodes: {nNode}")
-        print(f"cache: {len(cache)}")
+        mv = alphabeta(board, player, i)
+        print(len(cache))
         print(f"alphabeta: {time.time()-s} seconds for i={i}")
         pStat()
         jmv = to_tournament_move(mv)
         best_move.value = jmv
-        i += 2 if i <= 4 else 1
+        i += 1
     return mv
-
-
-nNode = 0
-if __name__ == '__main__':
-    from ai_old import alphabeta as old_ab
-
-    board = from_tournament_format(
-        "???????????@@@@@...??.oo@@...??ooo@@@..??oo@o@@..??.oo@o@..??oo@@@@@.??...@@oo.??...@ooo.???????????")
-    #board = from_tournament_format(
-    #    "???????????....@...??..o@@...??.@@@@@@o??..@@o@o.??..o@@oo.??..o@@@o.??...@@@..??........???????????")
-    for i in range(1, 9):
-        nNode = 0
-        s = time.time()
-        # mv = delta_epsilon(board, BLACK, NEGATIVE_INF, POSITIVE_INF, BLACK, i)
-        nod = Node(board, BLACK)
-        mv = delta_epsilon(nod, BLACK, NEGATIVE_INF, POSITIVE_INF, i)
-        e = time.time()
-        print(f'alphabeta took {e-s} seconds for i={i}')
-        print(f"nodes: {nNode}")
-        print(f"cache: {len(cache)}")
-        # nNode = 0
-        # s = time.time()
-        # mv = alphabeta_memory(board, BLACK, NEGATIVE_INF, POSITIVE_INF, BLACK, i)
-        # e = time.time()
-        # print(f'alphabeta_memory took {e-s} seconds for i={i}')
-        # print(f"nodes: {nNode}")
-        # print(f"cache: {len(cache)}")
-        # nNode = 0
-        # s = time.time()
-        # mv = old_ab(board, BLACK, i - 1)
-        # e = time.time()
-        # print(f'alphabeta_old took {e-s} seconds for i={i}')
-        # print(f"nodes: {nNode}")
-        # print(f"cache: {len(cache)}")

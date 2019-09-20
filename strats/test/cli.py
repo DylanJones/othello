@@ -7,13 +7,13 @@ import sys
 import importlib
 from multiprocessing import Process
 
-from Othello_Core import *
-from ai import get_move, random
-from helpers import *
-from heuristics import count_colors
-from helpers import to_tournament_format, to_tournament_move, from_tournament_move
+from .Othello_Core import *
+from .ai import get_move, random
+from .helpers import *
+from .heuristics import count_colors
+from .helpers import to_tournament_format, to_tournament_move, from_tournament_move
 
-TIMEOUT = 1
+TIMEOUT = 30
 
 
 def main():
